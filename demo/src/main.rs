@@ -1,8 +1,10 @@
 use anyhow::Context;
+use aya::maps::HashMap;
 use aya::programs::{Xdp, XdpFlags};
 use aya::{include_bytes_aligned, Bpf};
 use aya_log::BpfLogger;
 use clap::Parser;
+use demo_common::BackendPorts;
 use log::{info, warn};
 use tokio::signal;
 
@@ -39,6 +41,16 @@ async fn main() -> Result<(), anyhow::Error> {
     program.attach(&opt.iface, XdpFlags::SKB_MODE)
         .context("failed to attach the XDP program with default flags - try changing XdpFlags::default() to XdpFlags::SKB_MODE")?;
 
+    let mut backends: HashMap<_, u16, BackendPorts> = HashMap::try_from(bpf.map_mut("BACKEND_PORTS")?)?;
+
+    let mut ports: [u16; 4] = [0; 4];
+    ports[0] = 9876;
+    ports[1] = 9877;
+    ports[2] = 9878;
+
+    let backend_ports = BackendPorts { ports, index: 0 };
+
+    backends.insert(9875, backend_ports, 0)?;
     info!("Waiting for Ctrl-C...");
     signal::ctrl_c().await?;
     info!("Exiting...");

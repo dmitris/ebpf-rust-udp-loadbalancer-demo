@@ -3,10 +3,12 @@
 
 use aya_bpf::{
     bindings::xdp_action,
-    macros::xdp,
+    macros::{map, xdp},
+    maps::HashMap,
     programs::XdpContext,
 };
 use aya_log_ebpf::info;
+use demo_common::BackendPorts;
 mod bindings;
 use bindings::{ethhdr, iphdr, udphdr};
 use core::mem;
@@ -16,6 +18,8 @@ const ETH_P_IP: u16 = 0x0800;
 const ETH_HDR_LEN: usize = mem::size_of::<ethhdr>();
 const IP_HDR_LEN: usize = mem::size_of::<iphdr>();
 
+#[map(name = "BACKEND_PORT")]
+static mut BACKEND_PORTS: HashMap<u16, BackendPorts> = HashMap::<u16, BackendPorts>::with_max_entries(10, 0);
 #[xdp(name="demo")]
 pub fn demo(ctx: XdpContext) -> u32 {
     match try_demo(ctx) {
